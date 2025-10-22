@@ -10,7 +10,7 @@ c.JupyterHub.hub_connect_ip = 'jupyterhub'
 c.JupyterHub.spawner_class = DockerSpawner
 
 # Set notebook image
-c.DockerSpawner.image = os.environ.get('DOCKER_JUPYTER_IMAGE', 'jupyter/minimal-notebook:latest')
+c.DockerSpawner.image = os.environ.get('DOCKER_JUPYTER_IMAGE', 'jupyterlab-container:latest')
 
 # Use same Docker network
 c.DockerSpawner.network_name = os.environ.get('DOCKER_NETWORK_NAME', 'jupyterhub_network')
@@ -63,3 +63,8 @@ c.Authenticator.admin_users = {'user_1'}
 
 # Default admin settings (for access control)
 c.JupyterHub.admin_access = True
+
+# DockerSpawner configuration to stop containers when users log out
+c.DockerSpawner.remove = True  # Remove containers after logout
+c.DockerSpawner.stop_timeout = 60  # Timeout before forcibly stopping the container
+c.DockerSpawner.cleanup_containers = True  # Cleanup any leftover containers after logout
