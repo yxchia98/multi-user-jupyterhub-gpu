@@ -45,6 +45,13 @@ class MyDummyAuthenticator(DummyAuthenticator):
             'user_1': 'password_1',
             'user_2': 'password_2',
             'user_3': 'password_3',
+            'user_4': 'password_4',
+            'user_5': 'password_5',
+            'user_6': 'password_6',
+            'user_7': 'password_7',
+            'user_8': 'password_8',
+            'user_9': 'password_9',
+            'user_10': 'password_10',
             # Add more users as needed
         }
         return users
