@@ -1,0 +1,27 @@
+version: '3.9'
+
+services:
+  jupyterhub:
+    image: yxchia98/spawner-jupyterhub:latest
+    container_name: jupyterhub
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./jupyterhub_config.py:/srv/jupyterhub/jupyterhub_config.py
+      - jupyterhub_data:/data/jupyterhub
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOCKER_JUPYTER_IMAGE=jupyter/minimal-notebook:latest
+      - DOCKER_NETWORK_NAME=jupyterhub_network
+    networks:
+      - jupyterhub_network
+
+volumes:
+  jupyterhub_data:
+    name: jupyterhub_data
+
+networks:
+  jupyterhub_network:
+    driver: bridge
+    name: jupyterhub_network
