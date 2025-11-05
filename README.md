@@ -5,14 +5,14 @@
 ## Build necessary containers
 Build DockerSpawner JupyterHub container
 ```
-docker build -t jupyterhub-container:latest .
+docker build -t localhost/jupyterhub-container:latest .
 ```
 
 Build user JupyterLab containers
 ```
 cd ./jupyterlab_container # OR BUILD fractional_jupyterlab
 cd ./fractional_clearml_jupyterlab
-docker build -t jupyterlab-container:latest .
+docker build -t localhost/jupyterlab-container:latest .
 ```
 
 ## Deploy JupyterHub using Docker Compose

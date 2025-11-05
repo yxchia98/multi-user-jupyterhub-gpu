@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   jupyterhub:
-    image: jupyterhub-container:latest
+    image: localhost/jupyterhub-container:latest
     container_name: jupyterhub
     restart: always
     ports:
