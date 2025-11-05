@@ -9,8 +9,10 @@ c.JupyterHub.hub_connect_ip = 'jupyterhub'
 # c.JupyterHub.hub_port = 8000
 c.JupyterHub.spawner_class = DockerSpawner
 
+
 # Set notebook image
-c.DockerSpawner.image = os.environ.get('DOCKER_JUPYTER_IMAGE', 'jupyterlab-container:latest')
+# c.DockerSpawner.image = os.environ.get('DOCKER_JUPYTER_IMAGE', 'jupyterlab-container:latest')
+c.DockerSpawner.image = os.environ.get('DOCKER_JUPYTER_IMAGE', 'fractional-jupyterlab:latest')
 
 # Use same Docker network
 c.DockerSpawner.network_name = os.environ.get('DOCKER_NETWORK_NAME', 'jupyterhub_network')
@@ -21,6 +23,17 @@ c.DockerSpawner.notebook_dir = notebook_dir
 c.DockerSpawner.volumes = { 'jupyterhub-user-{username}': notebook_dir }
 
 # Set the runtime to nvidia to enable GPU support
+# c.DockerSpawner.extra_host_config = {
+#     'runtime': 'nvidia',
+#     'device_requests': [
+#         {
+#             "Driver": "nvidia",
+#             "Count": -1,
+#             "Capabilities": [["gpu"]],
+#         }
+#     ]
+# }
+# clearml container host config
 c.DockerSpawner.extra_host_config = {
     'runtime': 'nvidia',
     'device_requests': [
@@ -29,8 +42,11 @@ c.DockerSpawner.extra_host_config = {
             "Count": -1,
             "Capabilities": [["gpu"]],
         }
-    ]
+    ],
+    "ipc_mode": "host",
+    "pid_mode": "host",
 }
+
 
 # Authentication: simple dummy (for testing)
 from jupyterhub.auth import DummyAuthenticator
