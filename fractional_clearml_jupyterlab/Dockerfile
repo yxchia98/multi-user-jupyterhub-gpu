@@ -31,35 +31,19 @@ RUN python3 -m pip install --upgrade pip && \
     numpy \
     pandas \
     matplotlib
-# # Create jovyan user matching Jupyter Docker Stacks convention
-# # Use existing users if present, else create; ensure home & work dir
-# RUN groupadd -g ${NB_GID} users || true && \
-#     useradd -m -s /bin/bash -N -u ${NB_UID} -g ${NB_GID} ${NB_USER} && \
-#     mkdir -p /home/${NB_USER}/work && \
-#     chown -R ${NB_UID}:${NB_GID} /home/${NB_USER}
-# # Set working dir
-# WORKDIR /home/${NB_USER}
-
-
-# Create jovyan (UID 1000) if not already created, add to sudo group, and enable passwordless sudo
-ENV NB_USER=jovyan NB_UID=1000 NB_GID=100
+    
+# Create jovyan user matching Jupyter Docker Stacks convention
+# Use existing users if present, else create; ensure home & work dir
 RUN groupadd -g ${NB_GID} users || true && \
-    id -u ${NB_USER} >/dev/null 2>&1 || useradd -m -s /bin/bash -N -u ${NB_UID} -g ${NB_GID} ${NB_USER} && \
-    mkdir -p /home/${NB_USER}/work && chown -R ${NB_UID}:${NB_GID} /home/${NB_USER} && \
-    usermod -aG sudo ${NB_USER} && \
-    echo "%sudo ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/010-sudo-nopasswd && \
-    chmod 0440 /etc/sudoers.d/010-sudo-nopasswd
-
-# default to /home/jovyan on terminal launch
-USER root
-RUN echo '[[ $- == *i* ]] && cd /home/jovyan' >> /home/jovyan/.bashrc && \
-    chown ${NB_UID}:${NB_GID} /home/jovyan/.bashrc
-
-# Expose default singleuser port (Hub passes a port anyway)
-EXPOSE 8888
+    useradd -m -s /bin/bash -N -u ${NB_UID} -g ${NB_GID} ${NB_USER} && \
+    mkdir -p /home/${NB_USER}/work && \
+    chown -R ${NB_UID}:${NB_GID} /home/${NB_USER}
+# Set working dir
+WORKDIR /home/${NB_USER}
 
 # Switch to non-root
 USER ${NB_UID}
+
 # Use tini for signal handling; run the Hub-aware singleuser server
 ENTRYPOINT ["tini", "-g", "--"]
 CMD ["jupyterhub-singleuser", "--ip=0.0.0.0", "--port=8888"]
