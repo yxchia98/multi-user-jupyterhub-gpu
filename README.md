@@ -10,12 +10,18 @@ docker build -t jupyterhub-container:latest .
 
 Build user JupyterLab containers
 ```
-cd ./jupyterlab_container
+cd ./jupyterlab_container # OR BUILD fractional_jupyterlab
+cd ./fractional_clearml_jupyterlab
 docker build -t jupyterlab-container:latest .
 ```
 
-## Deploy using Docker Compose
+## Deploy JupyterHub using Docker Compose
 ```
 cd ../
 docker compose up -d --build
+```
+
+## Deploy JupyterLab using Docker
+```
+docker run -it --rm --gpus all --ipc=host --pid=host -p 8888:8888 -e JUPYTER_TOKEN='password' localhost/jupyterhub-container:latest
 ```
