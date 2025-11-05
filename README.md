@@ -23,5 +23,5 @@ docker compose up -d --build
 
 ## Deploy JupyterLab using Docker
 ```
-docker run -it --rm --gpus all --ipc=host --pid=host -p 8888:8888 -e JUPYTER_TOKEN='password' localhost/jupyterhub-container:latest
+docker run -it --rm --gpus all --ipc=host --pid=host -p 8888:8888 -e JUPYTER_TOKEN='password' localhost/jupyterlab-container:latest
 ```

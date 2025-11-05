@@ -11,28 +11,16 @@ c.JupyterHub.spawner_class = DockerSpawner
 
 
 # Set notebook image
-# c.DockerSpawner.image = os.environ.get('DOCKER_JUPYTER_IMAGE', 'jupyterlab-container:latest')
-c.DockerSpawner.image = os.environ.get('DOCKER_JUPYTER_IMAGE', 'localhost/fractional-jupyterlab:latest')
+c.DockerSpawner.image = 'localhost/fractional-jupyterlab:latest'
 
 # Use same Docker network
 c.DockerSpawner.network_name = os.environ.get('DOCKER_NETWORK_NAME', 'jupyterhub_network')
 
 # Notebook directory inside container
-notebook_dir = '/home/jovyan/work'
+notebook_dir = '/home/jovyan'
 c.DockerSpawner.notebook_dir = notebook_dir
 c.DockerSpawner.volumes = { 'jupyterhub-user-{username}': notebook_dir }
 
-# Set the runtime to nvidia to enable GPU support
-# c.DockerSpawner.extra_host_config = {
-#     'runtime': 'nvidia',
-#     'device_requests': [
-#         {
-#             "Driver": "nvidia",
-#             "Count": -1,
-#             "Capabilities": [["gpu"]],
-#         }
-#     ]
-# }
 # clearml container host config
 c.DockerSpawner.extra_host_config = {
     'runtime': 'nvidia',
@@ -45,6 +33,11 @@ c.DockerSpawner.extra_host_config = {
     ],
     "ipc_mode": "host",
     "pid_mode": "host",
+}
+
+# Force all new JupyterLab terminals to start in /home/jovyan
+c.ServerApp.terminado_settings = {
+        'shell_command': ['/bin/bash', '-l', '-c', 'cd /home/jovyan && exec bash -l']
 }
 
 
@@ -74,11 +67,11 @@ class MyDummyAuthenticator(DummyAuthenticator):
 
 c.JupyterHub.authenticator_class = MyDummyAuthenticator
 
-# Set up admin users (optional, can be any user)
-c.Authenticator.admin_users = {'user_1'}
-
 # Default admin settings (for access control)
 c.JupyterHub.admin_access = True
+
+# Set up admin users (optional, can be any user)
+c.Authenticator.admin_users = {'user_1', 'user_2'}
 
 # DockerSpawner configuration to stop containers when users log out
 c.DockerSpawner.remove = True  # Remove containers after logout
