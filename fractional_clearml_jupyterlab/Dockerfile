@@ -1,5 +1,7 @@
 # Use the ClearML fractional GPU base
-FROM clearml/fractional-gpu:u22-cu12.3-8gb
+# FROM clearml/fractional-gpu:u22-cu12.3-8gb
+FROM clearml/fractional-gpu:u22-cu12.3-12gb
+
 
 LABEL maintainer="yixuan.chia@dell.com"
 
@@ -47,6 +49,11 @@ RUN groupadd -g ${NB_GID} users || true && \
     usermod -aG sudo ${NB_USER} && \
     echo "%sudo ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/010-sudo-nopasswd && \
     chmod 0440 /etc/sudoers.d/010-sudo-nopasswd
+
+# default to /home/jovyan on terminal launch
+USER root
+RUN echo '[[ $- == *i* ]] && cd /home/jovyan' >> /home/jovyan/.bashrc && \
+    chown ${NB_UID}:${NB_GID} /home/jovyan/.bashrc
 
 # Expose default singleuser port (Hub passes a port anyway)
 EXPOSE 8888
