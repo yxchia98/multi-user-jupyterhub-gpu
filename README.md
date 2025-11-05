@@ -13,6 +13,7 @@ Build user JupyterLab containers
 cd ./jupyterlab_container # OR BUILD fractional_jupyterlab
 cd ./fractional_clearml_jupyterlab
 docker build -t localhost/jupyterlab-container:latest .
+docker build -f Dockerfile-sudo-permissions -t localhost/jupyterlab-container:latest . # if you want to have sudoless root for users
 ```
 
 ## Deploy JupyterHub using Docker Compose

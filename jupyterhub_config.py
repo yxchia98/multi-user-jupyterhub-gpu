@@ -11,7 +11,7 @@ c.JupyterHub.spawner_class = DockerSpawner
 
 
 # Set notebook image
-c.DockerSpawner.image = 'localhost/fractional-jupyterlab:latest'
+c.DockerSpawner.image = 'localhost/jupyterlab-container:latest'
 
 # Use same Docker network
 c.DockerSpawner.network_name = os.environ.get('DOCKER_NETWORK_NAME', 'jupyterhub_network')
