@@ -71,7 +71,7 @@ c.JupyterHub.authenticator_class = MyDummyAuthenticator
 c.JupyterHub.admin_access = True
 
 # Set up admin users (optional, can be any user)
-c.Authenticator.admin_users = {'user_1', 'user_2'}
+c.Authenticator.admin_users = {'user_1'}
 
 # DockerSpawner configuration to stop containers when users log out
 c.DockerSpawner.remove = True  # Remove containers after logout
