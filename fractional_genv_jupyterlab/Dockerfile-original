@@ -1,0 +1,66 @@
+# CUDA 13.0, cuDNN, Ubuntu 24.04 (official NVIDIA base)
+# Use -devel if you may compile Python/CUDA extensions; switch to -runtime for a smaller image
+FROM nvidia/cuda:13.0.0-cudnn-devel-ubuntu24.04
+
+LABEL maintainer="yixuan.chia@dell.com"
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    SHELL=/bin/bash \
+    NB_USER=jovyan \
+    NB_UID=1000 \
+    NB_GID=100 \
+    HOME=/home/jovyan
+
+# ------------------------------------------------------------
+# System deps + tini
+# ------------------------------------------------------------
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+      python3 python3-pip python3-dev \
+      wget curl ca-certificates sudo tini git \
+    && rm -rf /var/lib/apt/lists/*
+
+# ------------------------------------------------------------
+# Python bootstrap
+# ------------------------------------------------------------
+RUN python3 -m pip install --upgrade pip && \
+    pip3 install --no-cache-dir \
+      jupyterhub jupyterlab notebook \
+      numpy pandas matplotlib \
+      genv
+
+# ------------------------------------------------------------
+# Preinstall PyTorch (GPU) matching CUDA 13.0 (cu130 wheels)
+# NOTE:
+#  - We pull wheels from PyTorch's official CUDA-13 index (cu130).
+#  - If you prefer to pin exact versions, replace unpinned packages below
+#    with the specific versions listed in the cu130 index directory.
+# ------------------------------------------------------------
+RUN pip3 install --no-cache-dir --index-url https://download.pytorch.org/whl/cu130 \
+      torch torchvision torchaudio
+
+# ------------------------------------------------------------
+# Create jovyan user & workspace
+# ------------------------------------------------------------
+RUN groupadd -g ${NB_GID} users || true && \
+    useradd -m -s /bin/bash -N -u ${NB_UID} -g ${NB_GID} ${NB_USER} && \
+    mkdir -p /home/${NB_USER}/work && \
+    chown -R ${NB_UID}:${NB_GID} /home/${NB_USER}
+
+WORKDIR /home/${NB_USER}
+USER ${NB_UID}
+
+# Optional: convenience script to initialize a Genv env
+RUN echo '#!/bin/bash'                                  >  ~/init_genv.sh && \
+    echo 'set -e'                                       >> ~/init_genv.sh && \
+    echo 'genv activate -c lab'                         >> ~/init_genv.sh && \
+    echo '# Example: 1 GPU, cap to 12GB VRAM (adjust as needed)' >> ~/init_genv.sh && \
+    echo 'genv config --gpus 1 --memory 12GB'           >> ~/init_genv.sh && \
+    echo 'genv status || true'                          >> ~/init_genv.sh && \
+    chmod +x ~/init_genv.sh
+
+# Entrypoint/CMD for JupyterHub singleuser
+ENTRYPOINT ["tini", "-g", "--"]
+CMD ["jupyterhub-singleuser", "--ip=0.0.0.0", "--port=8888"]

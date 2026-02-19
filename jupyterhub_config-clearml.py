@@ -35,29 +35,6 @@ c.DockerSpawner.extra_host_config = {
     "pid_mode": "host",
 }
 
-
-# ---------------------------
-# Apply Genv VRAM limit, then start singleuser
-# ---------------------------
-# This runs BEFORE the JupyterHub singleuser server:
-# - creates/activates "lab" env
-# - attaches 1 GPU, caps VRAM to 12GB
-# - prints status (non-fatal if it fails)
-# Then execs the Hub-aware singleuser.
-
-# c.DockerSpawner.cmd = [
-#     'bash', '-lc',
-#     'genv activate -c lab && genv config --gpus 1 --memory 12GB && genv status || true; '
-#     'exec jupyterhub-singleuser --ip=0.0.0.0 --port=8888'
-# ]
-
-# If you prefer to use the helper script baked into the image, use this instead:
-# c.DockerSpawner.cmd = [
-#     'bash', '-lc',
-#     '~/init_genv.sh || true; exec jupyterhub-singleuser --ip=0.0.0.0 --port=8888'
-# ]
-
-
 # Force all new JupyterLab terminals to start in /home/jovyan
 c.ServerApp.terminado_settings = {
         'shell_command': ['/bin/bash', '-l', '-c', 'cd /home/jovyan && exec bash -l']
