@@ -1,5 +1,6 @@
-# Ubuntu 22.04 base; we'll install CUDA 13.0 from NVIDIA's official repo.
-FROM ubuntu:22.04
+# CUDA 13.0, cuDNN, Ubuntu 24.04 (official NVIDIA base)
+# Use -devel if you may compile Python/CUDA extensions; switch to -runtime for a smaller image
+FROM nvidia/cuda:13.0.0-cudnn-devel-ubuntu24.04
 
 LABEL maintainer="yixuan.chia@dell.com"
 
@@ -17,34 +18,12 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # ------------------------------------------------------------
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
-      wget curl ca-certificates gnupg sudo tini git \
       python3 python3-pip python3-dev \
+      wget curl ca-certificates sudo tini git \
     && rm -rf /var/lib/apt/lists/*
 
 # ------------------------------------------------------------
-# Install CUDA 13.0 Toolkit on Ubuntu 22.04
-# (NVIDIA doesn't ship an ubuntu22.04 CUDA-13 image; we install from repo)
-# Downloads: https://developer.nvidia.com/cuda-13-0-0-download-archive
-# ------------------------------------------------------------
-# Pin the CUDA repo priority
-RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin && \
-    mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
-
-# Add the local repo .deb (offline-style installer that registers an apt source)
-RUN wget https://developer.download.nvidia.com/compute/cuda/13.0.0/local_installers/cuda-repo-ubuntu2204-13-0-local_13.0.0-1_amd64.deb && \
-    dpkg -i cuda-repo-ubuntu2204-13-0-local_13.0.0-1_amd64.deb && \
-    cp /var/cuda-repo-ubuntu2204-13-0-local/cuda-*-keyring.gpg /usr/share/keyrings/ && \
-    apt-get update && \
-    # Core toolkit (nvcc, libs, runtime). Add cuDNN meta if desired:
-    apt-get install -y cuda-toolkit-13-0 && \
-    rm -rf /var/lib/apt/lists/*
-
-# Expose CUDA in PATH/LD_LIBRARY_PATH
-ENV PATH=/usr/local/cuda/bin:${PATH}
-ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
-
-# ------------------------------------------------------------
-# Python bootstrap + core packages + Genv
+# Python bootstrap
 # ------------------------------------------------------------
 RUN python3 -m pip install --upgrade pip && \
     pip3 install --no-cache-dir \
@@ -54,7 +33,10 @@ RUN python3 -m pip install --upgrade pip && \
 
 # ------------------------------------------------------------
 # Preinstall PyTorch (GPU) matching CUDA 13.0 (cu130 wheels)
-# See available versions at: https://download.pytorch.org/whl/cu130/
+# NOTE:
+#  - We pull wheels from PyTorch's official CUDA-13 index (cu130).
+#  - If you prefer to pin exact versions, replace unpinned packages below
+#    with the specific versions listed in the cu130 index directory.
 # ------------------------------------------------------------
 RUN pip3 install --no-cache-dir --index-url https://download.pytorch.org/whl/cu130 \
       torch torchvision torchaudio
@@ -73,13 +55,13 @@ USER ${NB_UID}
 # ------------------------------------------------------------
 # Built-in startup: Genv limits, then JupyterHub singleuser
 # ------------------------------------------------------------
-# Allow overrides at runtime via env (handy for Spawner profiles)
+# Allow overrides at runtime via env (handy for profiles)
 ENV GENV_NAME=lab \
     GENV_GPUS=1 \
     GENV_VRAM=12GB \
     JUPYTER_PORT=8888
 
-# Startup script:
+# Startup script that:
 # 1) creates/activates Genv env
 # 2) attaches 1 GPU and caps VRAM to 12GB
 # 3) execs jupyterhub-singleuser
