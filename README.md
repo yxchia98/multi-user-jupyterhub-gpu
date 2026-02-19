@@ -9,6 +9,7 @@ docker build -t localhost/jupyterhub-container:latest .
 ```
 
 **Build user JupyterLab containers**
+
 OPTION 1 - Normal JupyterLab without GPU Fractioning:
 ```
 cd ./jupyterlab_container # OR BUILD fractional_jupyterlab
