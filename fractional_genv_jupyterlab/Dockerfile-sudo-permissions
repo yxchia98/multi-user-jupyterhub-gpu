@@ -1,0 +1,64 @@
+FROM nvidia/cuda:13.0.0-cudnn-runtime-ubuntu22.04
+
+LABEL maintainer="yixuan.chia@dell.com"
+
+# Define variables before using them
+ENV NB_USER=jovyan \
+    NB_UID=1000 \
+    NB_GID=100 \
+    HOME=/home/jovyan \
+    DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    SHELL=/bin/bash
+
+# Set the path for the virtual environment
+ENV PATH="/home/${NB_USER}/.venv/bin:${PATH}"
+
+# Install system dependencies, Tini (init system), and cleanup
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+    python3-pip python3-dev wget curl ca-certificates sudo tini python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create and activate a Python virtual environment
+RUN python3 -m venv /home/${NB_USER}/.venv
+
+# Upgrade pip and install Python packages inside the virtual environment
+RUN /home/${NB_USER}/.venv/bin/pip install --upgrade pip && \
+    /home/${NB_USER}/.venv/bin/pip install \
+    jupyterhub \
+    jupyterlab \
+    notebook \
+    numpy \
+    pandas \
+    matplotlib \
+    genv  # Install genv package
+
+# Create jovyan user matching Jupyter Docker Stacks convention, add to sudo group, and enable passwordless sudo
+RUN getent group ${NB_GID} || groupadd -g ${NB_GID} users && \
+    getent passwd ${NB_UID} || useradd -m -s /bin/bash -N -u ${NB_UID} -g ${NB_GID} ${NB_USER} && \
+    mkdir -p /home/${NB_USER}/work && \
+    chown -R ${NB_UID}:${NB_GID} /home/${NB_USER} && \
+    usermod -aG sudo ${NB_USER} && \
+    echo "%sudo ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/010-sudo-nopasswd && \
+    chmod 0440 /etc/sudoers.d/010-sudo-nopasswd
+
+COPY ./content/ /home/jovyan/work/
+
+# Set working dir
+WORKDIR /home/${NB_USER}
+
+# Switch to non-root user
+USER ${NB_UID}
+
+# ENTRYPOINT to ensure genv is activated, GPU memory is configured, and shell is initialized
+ENTRYPOINT ["/usr/bin/tini", "-g", "-s", "--", "/bin/bash", "-c", "\
+    source /home/${NB_USER}/.venv/bin/activate && \
+    eval \"$(genv shell --init)\" && \
+    genv activate --name my-env --gpus 1 && \
+    genv config gpu-memory 12g && \
+    /home/jovyan/.venv/bin/jupyterhub-singleuser --ip=0.0.0.0 --port=8888"]
+
+# Default command is handled by ENTRYPOINT, which runs jupyterhub-singleuser
+CMD ["/home/jovyan/.venv/bin/jupyterhub-singleuser", "--ip=0.0.0.0", "--port=8888"]
