@@ -1,106 +1,59 @@
-# Ubuntu 22.04 base; we'll install CUDA 13.0 from NVIDIA's official repo.
-FROM ubuntu:22.04
+FROM nvidia/cuda:13.0.0-cudnn-runtime-ubuntu22.04
 
 LABEL maintainer="yixuan.chia@dell.com"
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    LANG=C.UTF-8 \
-    LC_ALL=C.UTF-8 \
-    SHELL=/bin/bash \
-    NB_USER=jovyan \
+# Define variables before using them
+ENV NB_USER=jovyan \
     NB_UID=1000 \
     NB_GID=100 \
-    HOME=/home/jovyan
+    HOME=/home/jovyan \
+    DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    SHELL=/bin/bash
 
-# ------------------------------------------------------------
-# System deps + tini
-# ------------------------------------------------------------
+# Set the path for the virtual environment
+ENV PATH="/home/${NB_USER}/.venv/bin:${PATH}"
+
+# Install system dependencies, Tini (init system), and cleanup
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
-      wget curl ca-certificates gnupg sudo tini git \
-      python3 python3-pip python3-dev \
+    python3-pip python3-dev wget curl ca-certificates sudo tini python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
-# ------------------------------------------------------------
-# Install CUDA 13.0 Toolkit on Ubuntu 22.04
-# (NVIDIA doesn't ship an ubuntu22.04 CUDA-13 image; we install from repo)
-# Downloads: https://developer.nvidia.com/cuda-13-0-0-download-archive
-# ------------------------------------------------------------
-# Pin the CUDA repo priority
-RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-ubuntu2204.pin && \
-    mv cuda-ubuntu2204.pin /etc/apt/preferences.d/cuda-repository-pin-600
+# Create and activate a Python virtual environment
+RUN python3 -m venv /home/${NB_USER}/.venv
 
-# Add the local repo .deb (offline-style installer that registers an apt source)
-RUN wget https://developer.download.nvidia.com/compute/cuda/13.0.0/local_installers/cuda-repo-ubuntu2204-13-0-local_13.0.0-1_amd64.deb && \
-    dpkg -i cuda-repo-ubuntu2204-13-0-local_13.0.0-1_amd64.deb && \
-    cp /var/cuda-repo-ubuntu2204-13-0-local/cuda-*-keyring.gpg /usr/share/keyrings/ && \
-    apt-get update && \
-    # Core toolkit (nvcc, libs, runtime). Add cuDNN meta if desired:
-    apt-get install -y cuda-toolkit-13-0 && \
-    rm -rf /var/lib/apt/lists/*
+# Upgrade pip and install Python packages inside the virtual environment
+RUN /home/${NB_USER}/.venv/bin/pip install --upgrade pip && \
+    /home/${NB_USER}/.venv/bin/pip install \
+    jupyterhub \
+    jupyterlab \
+    notebook \
+    numpy \
+    pandas \
+    matplotlib \
+    genv  # Install genv package
 
-# Expose CUDA in PATH/LD_LIBRARY_PATH
-ENV PATH=/usr/local/cuda/bin:${PATH}
-ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:${LD_LIBRARY_PATH}
-
-# ------------------------------------------------------------
-# Python bootstrap + core packages + Genv
-# ------------------------------------------------------------
-RUN python3 -m pip install --upgrade pip && \
-    pip3 install --no-cache-dir \
-      jupyterhub jupyterlab notebook \
-      numpy pandas matplotlib \
-      genv
-
-# ------------------------------------------------------------
-# Preinstall PyTorch (GPU) matching CUDA 13.0 (cu130 wheels)
-# See available versions at: https://download.pytorch.org/whl/cu130/
-# ------------------------------------------------------------
-RUN pip3 install --no-cache-dir --index-url https://download.pytorch.org/whl/cu130 \
-      torch torchvision torchaudio
-
-# ------------------------------------------------------------
-# Create jovyan user & workspace
-# ------------------------------------------------------------
-RUN groupadd -g ${NB_GID} users || true && \
-    useradd -m -s /bin/bash -N -u ${NB_UID} -g ${NB_GID} ${NB_USER} && \
+# Create jovyan user matching Jupyter Docker Stacks convention
+RUN getent group ${NB_GID} || groupadd -g ${NB_GID} users && \
+    getent passwd ${NB_UID} || useradd -m -s /bin/bash -N -u ${NB_UID} -g ${NB_GID} ${NB_USER} && \
     mkdir -p /home/${NB_USER}/work && \
     chown -R ${NB_UID}:${NB_GID} /home/${NB_USER}
 
+# Set working dir
 WORKDIR /home/${NB_USER}
+
+# Switch to non-root user
 USER ${NB_UID}
 
-# ------------------------------------------------------------
-# Built-in startup: Genv limits, then JupyterHub singleuser
-# ------------------------------------------------------------
-# Allow overrides at runtime via env (handy for Spawner profiles)
-ENV GENV_NAME=lab \
-    GENV_GPUS=1 \
-    GENV_VRAM=12GB \
-    JUPYTER_PORT=8888
+# ENTRYPOINT to ensure genv is activated, GPU memory is configured, and shell is initialized
+ENTRYPOINT ["/usr/bin/tini", "-g", "-s", "--", "/bin/bash", "-c", "\
+    source /home/${NB_USER}/.venv/bin/activate && \
+    eval \"$(genv shell --init)\" && \
+    genv activate --name my-env --gpus 1 && \
+    genv config gpu-memory 12g && \
+    /home/jovyan/.venv/bin/jupyterhub-singleuser --ip=0.0.0.0 --port=8888"]
 
-# Startup script:
-# 1) creates/activates Genv env
-# 2) attaches 1 GPU and caps VRAM to 12GB
-# 3) execs jupyterhub-singleuser
-RUN printf '%s\n' \
-  '#!/usr/bin/env bash' \
-  'set -euo pipefail' \
-  '' \
-  'echo "[startup] Genv environment: ${GENV_NAME}"' \
-  'echo "[startup] GPUs: ${GENV_GPUS} | VRAM cap: ${GENV_VRAM}"' \
-  '' \
-  'if ! genv activate "${GENV_NAME}" 2>/dev/null; then' \
-  '  echo "[startup] Creating Genv env: ${GENV_NAME}"' \
-  '  genv activate -c "${GENV_NAME}"' \
-  'fi' \
-  'genv config --gpus "${GENV_GPUS}" --memory "${GENV_VRAM}"' \
-  'genv status || true' \
-  '' \
-  'exec jupyterhub-singleuser --ip=0.0.0.0 --port="${JUPYTER_PORT}"' \
-  > /usr/local/bin/start-singleuser.sh && \
-  chmod +x /usr/local/bin/start-singleuser.sh
-
-# Entrypoint/CMD for JupyterHub singleuser
-ENTRYPOINT ["tini", "-g", "--"]
-CMD ["start-singleuser.sh"]
+# Default command is handled by ENTRYPOINT, which runs jupyterhub-singleuser
+CMD ["/home/jovyan/.venv/bin/jupyterhub-singleuser", "--ip=0.0.0.0", "--port=8888"]
