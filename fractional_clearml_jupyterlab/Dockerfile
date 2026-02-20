@@ -38,6 +38,9 @@ RUN groupadd -g ${NB_GID} users || true && \
     useradd -m -s /bin/bash -N -u ${NB_UID} -g ${NB_GID} ${NB_USER} && \
     mkdir -p /home/${NB_USER}/work && \
     chown -R ${NB_UID}:${NB_GID} /home/${NB_USER}
+
+COPY ./content/ /home/jovyan/work/
+
 # Set working dir
 WORKDIR /home/${NB_USER}
 

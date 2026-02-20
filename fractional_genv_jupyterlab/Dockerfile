@@ -41,6 +41,8 @@ RUN getent group ${NB_GID} || groupadd -g ${NB_GID} users && \
     mkdir -p /home/${NB_USER}/work && \
     chown -R ${NB_UID}:${NB_GID} /home/${NB_USER}
 
+COPY ./content/ /home/jovyan/work/
+
 # Set working dir
 WORKDIR /home/${NB_USER}
 
