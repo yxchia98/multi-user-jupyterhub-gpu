@@ -10,6 +10,8 @@ docker build -t localhost/jupyterhub-container:latest .
 
 **Build user JupyterLab containers**
 
+Before building, copy over your lab materials into `./content/` folder of respective options. 
+
 OPTION 1 - JupyterLab with `Run:AI Genv` GPU Fractioning:
 ```
 cd ./fractional_genv_jupyterlab
