@@ -4,6 +4,7 @@ USER root
 
 # Install sudo
 RUN apt-get update && apt-get install -y sudo && rm -rf /var/lib/apt/lists/*
+RUN apt update && apt install build-essential -y
 
 # Allow jovyan to run sudo without a password
 RUN echo "jovyan ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
