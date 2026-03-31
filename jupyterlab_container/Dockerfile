@@ -9,7 +9,7 @@ RUN apt update && apt install build-essential -y
 # Allow jovyan to run sudo without a password
 RUN echo "jovyan ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-COPY ./content/ /home/jovyan/work/
+COPY --chown=jovyan:users ./content/ /home/jovyan/work/
 
 # Set the default user back to jovyan
 USER jovyan
